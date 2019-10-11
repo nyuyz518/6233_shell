@@ -72,7 +72,7 @@ runcmd(struct cmd *cmd)
     /*check if opened the requested file in to the original fd*/
     if(open(rcmd->file, rcmd->mode) != rcmd->fd){
       fprintf(stderr, "file open failure\n");
-      exit(0);
+      exit(-1);
     }
     /*
     FILE *stream;
