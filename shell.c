@@ -44,6 +44,7 @@ void
 runcmd(struct cmd *cmd)
 {
   int p[2], r;
+  int fdcopy = -1;
   struct execcmd *ecmd;
   struct pipecmd *pcmd;
   struct redircmd *rcmd;
@@ -60,27 +61,58 @@ runcmd(struct cmd *cmd)
     ecmd = (struct execcmd*)cmd;
     if(ecmd->argv[0] == 0)
       exit(0);
-    fprintf(stderr, "exec not implemented\n");
-    // Your code here ...
     execvp(ecmd->argv[0], ecmd->argv);
     break;
 
   case '>':
   case '<':
     rcmd = (struct redircmd*)cmd; 
-    // Your code here ...
-    close(rcmd->fd);
-    if (open(rcmd->file,rcmd->mode)<0){
-      fprintf(stderr, "redir not implemented\n");
+    /*close whatever comes, free up fd number*/
+    close(rcmd->fd); 
+    /*check if opened the requested file in to the original fd*/
+    if(open(rcmd->file, rcmd->mode) != rcmd->fd){
+      fprintf(stderr, "file open failure\n");
       exit(0);
     }
+    /*
+    FILE *stream;
+    if(rcmd->fd == 1){
+      stream = freopen(rcmd->file,"w",stdout);
+    } 
+    if(rcmd->fd == 0) {
+      stream = freopen(rcmd->file, "r", stdin);
+    }
+    if(stream == NULL){
+        fprintf(stderr, "error\n");
+    } 
+    */
     runcmd(rcmd->cmd);
     break;
 
   case '|':
     pcmd = (struct pipecmd*)cmd;
-    fprintf(stderr, "pipe not implemented\n");
-    // Your code here ...
+    if(pipe(p) < 0)
+      fprintf(stderr, "error\n");
+
+    if(fork1() == 0){
+      close(1);
+      dup(p[1]);
+      close(p[0]);
+      close(p[1]);
+      runcmd(pcmd->left);
+    }
+    if(fork1() == 0){
+      close(0);
+      dup(p[0]);
+      close(p[0]);
+      close(p[1]);
+      runcmd(pcmd->right);
+    }
+    close(p[0]);
+    close(p[1]);
+    wait(&r);
+    wait(&r);
+    
     break;
   }    
   exit(0);
